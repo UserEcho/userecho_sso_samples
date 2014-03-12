@@ -1,0 +1,104 @@
+/**
+ * Create url to userecho.com with sso token.
+ * 
+ * @author Haru Atari <haruatari.github.com>
+ */
+class UserEcho
+{
+    const API_KEY       = '<YOUR_API_KEY>';
+    const PROJECT_KEY   = '<YOUR_PROJECT_KEY>';
+    const TOKEN_EXPIRES = 86400;
+    const BASE_URL      = '<YOUR_BASE_USER_ECHO_URL>';
+
+    /**
+     * Generate url for user echo.
+     *
+     * @param        $id
+     * @param        $login
+     * @param        $email
+     * @param        $avatar
+     * @param string $locale
+     * @return string
+     */
+    public function createSsoUrl($id, $login, $email, $avatar, $locale = 'ru')
+    {
+        return self::BASE_URL . '?sso_token=' . $this->createSsoToken($id, $login, $email, $avatar, $locale);
+    }
+
+    /**
+     * Generate token.
+     *
+     * @param        $id
+     * @param        $login
+     * @param        $email
+     * @param        $avatar
+     * @param string $locale
+     * @return string
+     */
+    public function createSsoToken($id, $login, $email, $avatar, $locale = 'ru')
+    {
+        $message = [
+            'guid'         => $id,
+            'expires_date' => $this->getExpiresDate(),
+            'display_name' => $login,
+            'email'        => $email,
+            'locale'       => $locale,
+            'avatar_url'   => $avatar,
+        ];
+
+        $iv          = $this->generateIV();
+        $keyHash     = substr(hash('sha1', self::API_KEY . self::PROJECT_KEY, true), 0, 16);
+        $messageJson = json_encode($message);
+
+        for ($i = 0; $i < 16; $i++) {
+            $messageJson[$i] = $messageJson[$i] ^ $iv[$i];
+        }
+
+        $pad         = 16 - (strlen($messageJson) % 16);
+        $messageJson = $messageJson . str_repeat(chr($pad), $pad);
+
+        $cipher = mcrypt_module_open(MCRYPT_RIJNDAEL_128, '', 'cbc', '');
+        mcrypt_generic_init($cipher, $keyHash, $iv);
+        $encryptedBytes = mcrypt_generic($cipher, $messageJson);
+        mcrypt_generic_deinit($cipher);
+
+        return urlencode(base64_encode($encryptedBytes));
+    }
+
+    /**
+     * Generate random iv
+     *
+     * @return string
+     */
+    private function generateIV()
+    {
+        return $this->getRandomString(16);
+    }
+
+    /**
+     * Generate expires date
+     *
+     * @return string
+     */
+    private function getExpiresDate()
+    {
+        return gmdate("Y-m-d H:i:s", time() + self::TOKEN_EXPIRES);
+    }
+
+    /**
+     * Generate random string
+     *
+     * @param $length String length
+     * @return string
+     */
+    private function getRandomString($length)
+    {
+        $str       = 'abcdefjhigklmnopqrstuvwzxyABCDEFGHJKLMNPQRSTUVWXYZ123456789';
+        $strLength = strlen($str);
+        $res       = '';
+        for ($i = 0; $i < $length; $i++) {
+            $res .= $str[rand(0, $strLength - 1)];
+        }
+        return $res;
+    }
+}
