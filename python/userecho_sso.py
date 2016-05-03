@@ -31,8 +31,8 @@ def get_sso_token(request):
     "avatar_url" : "http://test.com/users/1234/image.png",
     }
 
-    sso_key = "b939398ae3226fd6b058058c29301d50"
-    project_alias = "feedback"
+    sso_key = "YOUR_KEY"
+    project_alias = "YOUR_ALIAS"
 
     iv  = randpool.RandomPool(AES.block_size).get_bytes(AES.block_size)
     key_hash = hashlib.sha1(sso_key+project_alias).digest()[:16]

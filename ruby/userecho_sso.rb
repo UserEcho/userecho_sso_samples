@@ -1,11 +1,11 @@
-﻿# Ruby UserEcho SinsgeSignOn code example v1.2
+﻿# Ruby UserEcho SingleSignOn code example v1.2
 # tested with ruby 1.9.3
 require 'cgi'
 require 'ezcrypto'
 require 'json'
 
-sso_key = ''
-project_alias = 'feedback'
+sso_key = 'YOUR_KEY'
+project_alias = 'YOUR_ALIAS'
 url = 'url'
 
 message = {

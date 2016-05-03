@@ -14,8 +14,8 @@
 
 function get_sso_token()
 {
-$sso_key = "b939398ae3226fd6b058058c29301d50"; // Your project personal api key
-$project_alias = "feedback"; // Your project alias
+$sso_key = "YOUR_KEY"; // Your project personal api key
+$project_alias = "YOUR_ALIAS"; // Your project alias
 
 $message = array(
     "guid" => "12345", // User ID in your system - using for identify user in next time (first time auto-registion)
