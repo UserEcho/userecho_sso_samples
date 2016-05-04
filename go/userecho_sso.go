@@ -1,9 +1,21 @@
-package userecho
+/*
+    "Go" UserEcho Single Sign-On code example v2.0
+    Date: 2016-05-04
+    
+    Using: 
+    Add your userEchoSsoKey. call GetSSOToken()
+    Then use sso_token in your URL: http://[your_alias].userecho.com/?sso_token=sso_token
+    OR in the JS widget:
+    var _ues = {
+        ... ,
+    params:{sso_token:sso_token}
+    };
+*/
+package main
 
 import (
     "crypto/aes"
     "crypto/cipher"
-    "crypto/sha1"
     "encoding/base64"
     "encoding/json"
     "fmt"
@@ -12,35 +24,25 @@ import (
     "time"
 )
 
-var userEchoSsoKey string = "YOUR_KEY"
-var userEchoProjectAlias string = "YOUR_ALIAS"
+var userEchoSsoKey string = "==========YOUR_SSO_KEY=========="
 
 type UserEchoJSON struct {
     UserId      string `json:"guid"`
-    ExpiresTime string `json:"expires_date"`
+    Expires     int64  `json:"expires"`
     DisplayName string `json:"display_name"`
     Email       string `json:"email"`
-    Verified    bool   `json:"verified_email"`
 }
 
+func GetSSOToken(guid, displayName, email string) (string, error) {
 
-func GetSSOToken(guid string, expiresTime time.Time, displayName, email string) (string, []error) {
-
-    expiresTimeString := fmt.Sprintf("%d-%02d-%02d %02d:%02d:%02d",
-        expiresTime.Year(),
-        expiresTime.Month(),
-        expiresTime.Day(),
-        expiresTime.Hour(),
-        expiresTime.Minute(),
-        expiresTime.Second())
+    expiresTimeString := time.Now().Unix() + 3600
 
     // Create Json string
     userEchoJson := &UserEchoJSON{
         UserId:      guid,
-        ExpiresTime: expiresTimeString,
+        Expires: expiresTimeString,
         DisplayName: displayName,
         Email:       email,
-        Verified:    true,
     }
 
     jsonBytes, e := json.Marshal(userEchoJson)
@@ -50,37 +52,35 @@ func GetSSOToken(guid string, expiresTime time.Time, displayName, email string) 
 
     // Generate IV
     ivString := handyman.RandomAlphanumericString(aes.BlockSize)
+    
     iv := []byte(ivString)
-
-
-    // Make a hash key
-    hasher := sha1.New()
-    hasher.Write([]byte(userEchoSsoKey + userEchoProjectAlias))
-    hashKey := hasher.Sum(nil)[:16]
-
-
-    // XOR the first 16 characters of JSON object with the IV 
-    // (so we include the vector in the data)
-    for i := 0; i < aes.BlockSize; i++ {
-        jsonBytes[i] = jsonBytes[i] ^ iv[i]
-    }
 
     // Expand block
     pad := aes.BlockSize - (len(jsonBytes) % aes.BlockSize)
-    data := []byte(string(jsonBytes[:]) + strings.Repeat(fmt.Sprintf("%c", rune(pad)), pad))
-
+    data_string := string(jsonBytes[:]) + strings.Repeat(fmt.Sprintf("%c", rune(pad)), pad)
+    data := []byte(data_string)
+    
     // Ecrypt the data
     var block cipher.Block
-    block, e = aes.NewCipher(hashKey)
+    block, e = aes.NewCipher([]byte(userEchoSsoKey))
     if e != nil {
         return "", e
     }
     mode := cipher.NewCBCEncrypter(block, iv)
     mode.CryptBlocks(data, data)
-    data64 := base64.StdEncoding.EncodeToString(data)
+    data64 := base64.StdEncoding.EncodeToString(append(iv, data...))
 
     // Screen out characters not allowed in links
     result := url.QueryEscape(data64)
 
-    return result, e.Nothing()
+    return result, nil
+}
+
+
+func main(){
+    var x, e = GetSSOToken("xsxsx", "cdccd", "cdcdcd")
+    if e != nil {
+        fmt.Printf("%s\n", e)
+    }
+    fmt.Printf("%s\n", x)
 }

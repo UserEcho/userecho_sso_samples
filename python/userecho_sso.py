@@ -1,54 +1,44 @@
 ﻿"""
-    Python UserEcho SinsgeSignOn code example v1.0
-    Set $message values
-    Using like:
-    http://feedback.userecho.com/?sso_token=generated_sso_token_here
-    or in widget:
+    Python UserEcho Single Sign-On code example v2.0
+    Date: 2016-05-03
+    
+    Using: 
+    Check test.py to generate sso_token
+    Then use in your URL: http://[your_alias].userecho.com/?sso_token=sso_token
+    OR in the JS widget:
     var _ues = {
-    ... ,
-    params:{sso_token=”generated sso token here”}
+        ... ,
+    params:{sso_token:sso_token}
     };
-
 """
+import base64
+import urllib
+import time
+import json
+from Crypto.Cipher import AES
 
-def get_sso_token(request):
-    from Crypto.Cipher import AES
-    from Crypto.Util import randpool
-    from datetime import datetime, timedelta
-    import hashlib
-    import array
-    import operator
-    import base64
-    import urllib
-    import json
+class UeSsoCipher():
+    bs = AES.block_size
+    mode = AES.MODE_CBC
 
-    message = {
-    "guid" : "1234",
-    "expires_date" : (datetime.utcnow()+timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S'),
-    "display_name" : 'Test User Name',
-    "email" : 'test@gmail.com',
-    "locale" : "en",
-    "avatar_url" : "http://test.com/users/1234/image.png",
-    }
+    def __init__(self, key):
+        self.key = key
 
-    sso_key = "YOUR_KEY"
-    project_alias = "YOUR_ALIAS"
+    def _pad(self, s):
+        pad = self.bs - len(s) % self.bs
+        return s if pad == self.bs else s + (pad) * chr(pad)
 
-    iv  = randpool.RandomPool(AES.block_size).get_bytes(AES.block_size)
-    key_hash = hashlib.sha1(sso_key+project_alias).digest()[:16]
-
-    data_json = json.dumps(message)
-    json_bytes = array.array('b', data_json[0 : len(data_json)])
-    iv_bytes = array.array('b', iv[0 : len(iv)])
-
-    # xor the iv into the first 16 bytes.
-    for i in range(0, AES.block_size):
-    	json_bytes[i] = operator.xor(json_bytes[i], iv_bytes[i])
-
-    pad = AES.block_size - len(json_bytes.tostring()) % AES.block_size
-    data = json_bytes.tostring() + (chr(pad) * pad)
-    encrypted_bytes = AES.new(key_hash, AES.MODE_CBC, iv).encrypt(data)
-
-    param_for_sso = urllib.quote(base64.b64encode(encrypted_bytes))
-
-    return param_for_sso
+    def encrypt(self, data_json):
+        from Crypto.Util import randpool
+        # add expiration date in UTC timestamp from Epoch
+        if not 'expires' in data_json:
+            # add expires in 1 hour
+            data_json['expires'] = int(time.time()) + 3600
+        # dump JSON data to string add padding if needed
+        raw = self._pad(json.dumps(data_json))
+        # generate IV
+        iv = randpool.RandomPool(self.bs).get_bytes(self.bs)
+        # encrypt data and prepend IV
+        res = base64.b64encode(iv + AES.new(self.key, self.mode, iv).encrypt(raw)) 
+        # quote data to use as an url parameter and return
+        return urllib.quote(res)
