@@ -50,7 +50,7 @@ class UeSsoCipher
 
     private function getRandomString($length)
     {
-        $str       = 'abcdefjhigklmnopqrstuvwzxyABCDEFGHJKLMNPQRSTUVWXYZ123456789';
+        $str       = 'abcdefghijklmnopqrstuvwzxyABCDEFGHIJKLMNOPQRSTUVWXYZ123456789';
         $strLength = strlen($str);
         $res       = '';
         for ($i = 0; $i < $length; $i++) {
