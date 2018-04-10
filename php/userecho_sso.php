@@ -1,7 +1,8 @@
 <?php
 /*
-    PHP UserEcho Single Sign-On code example v2.0
-    Date: 2016-05-03
+    PHP UserEcho Single Sign-On code example v3.0
+    Date: 2018-04-10
+    Comment: mcrypt methods replaced by openssl
     
     Using: 
     Check test.php to generate sso_token
@@ -15,48 +16,23 @@
 
 class UeSsoCipher
 {
-    const BLOCK_SIZE = 16;
-
+    const CIPHER = "AES-256-CBC";
     /*
-        Generate sso_token
+        Generates sso_token
         @param  $key - your sso_key
         @param  $data_json - prepared data in json format
-        @return string
+        @returns string
      */
     public function encrypt($key, $data_json)
     {
         // add expires if does not exist
-        if (!array_key_exists('expires',$data_json))
-        {
+        if (!array_key_exists('expires',$data_json)){
             # add 1 hour
             $data_json['expires'] = time()+3600;
         }
-
-        $iv = $this->getRandomString(self::BLOCK_SIZE);
-        $raw = $this->pad(json_encode($data_json));
-        $cipher = mcrypt_module_open(MCRYPT_RIJNDAEL_128, '', 'cbc', '');
-        mcrypt_generic_init($cipher, $key, $iv);
-        $encryptedBytes = mcrypt_generic($cipher, $raw);
-        mcrypt_generic_deinit($cipher);
-        return urlencode(base64_encode($iv . $encryptedBytes));
-    }
-
-    /* Padding string */
-    private function pad($raw)
-    {
-        $pad = self::BLOCK_SIZE - (strlen($raw) % self::BLOCK_SIZE);
-        return ($pad == self::BLOCK_SIZE)? $raw : $raw . str_repeat(chr($pad), $pad);
-    }
-
-    private function getRandomString($length)
-    {
-        $str       = 'abcdefjhigklmnopqrstuvwzxyABCDEFGHJKLMNPQRSTUVWXYZ123456789';
-        $strLength = strlen($str);
-        $res       = '';
-        for ($i = 0; $i < $length; $i++) {
-            $res .= $str[rand(0, $strLength - 1)];
-        }
-        return $res;
+        $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length($cipher=self::CIPHER));
+        $ciphertext_raw = openssl_encrypt(json_encode($data_json), self::CIPHER, $key, $options=OPENSSL_RAW_DATA, $iv);
+        return urlencode(base64_encode($iv . $ciphertext_raw));
     }
 }
 ?>
